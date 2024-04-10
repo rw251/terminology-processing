@@ -7,25 +7,15 @@
  *
  */
 
-import fs, {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  writeFileSync,
-} from 'fs';
-import { Readable } from 'stream';
-import { finished } from 'stream/promises';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import 'dotenv/config';
 import decompress from 'decompress';
 import { brotliCompress } from '../lib/brotli-compress.js';
 import { uploadToR2 } from '../lib/cloudflare.js';
+import { getLatestDrugRefsetUrl, downloadFile } from '../lib/trud.js';
+import { ensureDir, getSnomedDefinitions, getDirName } from '../lib/utils.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-let Cookie;
+const __dirname = getDirName(import.meta.url);
 
 const FILES_DIR = path.join(__dirname, 'files');
 const ZIP_DIR = ensureDir(path.join(FILES_DIR, 'zip'), true);
@@ -33,82 +23,11 @@ const RAW_DIR = ensureDir(path.join(FILES_DIR, 'raw'), true);
 const PROCESSED_DIR = ensureDir(path.join(FILES_DIR, 'processed'), true);
 const CODE_LOOKUP = path.join(FILES_DIR, 'code-lookup.json');
 
-const existingFiles = fs.readdirSync(ZIP_DIR);
+const existingFiles = readdirSync(ZIP_DIR);
 
-function ensureDir(filePath, isDir) {
-  mkdirSync(isDir ? filePath : path.dirname(filePath), { recursive: true });
-  return filePath;
-}
-
-if (!process.env.email) {
-  console.log('Need email=xxx in the .env file');
-  process.exit();
-}
-if (!process.env.password) {
-  console.log('Need password=xxx in the .env file');
-  process.exit();
-}
-
-// Check that SNOMED definitions exist on this pc
-const DEFINITION_FILE = path.join(
-  __dirname,
-  '..',
-  'snomed',
-  'files',
-  'processed',
-  'latest',
-  'defs.json'
-);
-if (!existsSync(DEFINITION_FILE)) {
-  console.log(`This project relies on the SNOMED directory being populated.`);
-  process.exit();
-}
-const SNOMED_DEFINITIONS = JSON.parse(readFileSync(DEFINITION_FILE, 'utf8'));
-
-async function login() {
-  if (Cookie) return;
-  const email = process.env.email;
-  const password = process.env.password;
-
-  console.log('> Logging in to TRUD...');
-  const result = await fetch(
-    'https://isd.digital.nhs.uk/trud/security/j_spring_security_check',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      redirect: 'manual',
-      body: new URLSearchParams({
-        j_username: email,
-        j_password: password,
-        commit: 'LOG+IN',
-      }),
-    }
-  );
-  const cookies = result.headers.getSetCookie();
-  const cookie = cookies.filter((x) => x.indexOf('JSESSIONID') > -1)[0];
-  console.log('> Logged in, and cookie cached.');
-  Cookie = cookie;
-}
-
-async function getLatestUrl() {
-  await login();
-  const response = await fetch(
-    'https://isd.digital.nhs.uk/trud/users/authenticated/filters/0/categories/26/items/105/releases?source=summary',
-    { headers: { Cookie } }
-  );
-  const html = await response.text();
-  const downloads = html.match(
-    /href="(https:\/\/isd.digital.nhs.uk\/download[^"]+)"/
-  );
-  const latest = downloads[1];
-  return latest;
-}
+const SNOMED_DEFINITIONS = getSnomedDefinitions();
 
 async function downloadIfNotExists(url) {
-  await login();
-
   const filename = url.split('/').reverse()[0].split('?')[0];
   console.log(`> The most recent zip file on TRUD is ${filename}`);
 
@@ -119,10 +38,9 @@ async function downloadIfNotExists(url) {
 
   console.log(`> That zip is not stored locally. Downloading...`);
   const outputFile = path.join(ZIP_DIR, filename);
-  const stream = fs.createWriteStream(outputFile);
-  const { body } = await fetch(url, { headers: { Cookie } });
-  await finished(Readable.fromWeb(body).pipe(stream));
-  console.log(`> File downloaded.`);
+
+  await downloadFile(url, outputFile);
+
   return filename;
 }
 
@@ -137,7 +55,7 @@ async function extractZip(zipFile) {
     return name;
   }
   console.log(`> The directory ${outDir} does not yet exist. Creating...`);
-  mkdirSync(outDir);
+  ensureDir(outDir, true);
   console.log(`> Extracting files from the zip...`);
   const files = await decompress(file, outDir, {
     filter: (file) => {
@@ -214,9 +132,8 @@ async function loadDataIntoMemory(dir) {
     // const refSets = JSON.parse(readFileSync(definitionFile));
     return dir;
   }
-  if (!existsSync(processedFilesDir)) {
-    mkdirSync(processedFilesDir);
-  }
+  ensureDir(processedFilesDir, true);
+
   const DRUG_DIR = path.join(
     rawFilesDir,
     readdirSync(rawFilesDir).filter((x) => x.indexOf('Drug') > -1)[0]
@@ -601,7 +518,7 @@ async function upload(dir) {
 }
 
 async function processLatestNHSDrugRefsets() {
-  await getLatestUrl()
+  await getLatestDrugRefsetUrl()
     .then(downloadIfNotExists)
     .then(extractZip)
     .then(loadDataIntoMemory)
