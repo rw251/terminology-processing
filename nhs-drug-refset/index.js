@@ -24,7 +24,7 @@ const PROCESSED_DIR = ensureDir(path.join(FILES_DIR, 'processed'), true);
 
 const existingFiles = readdirSync(ZIP_DIR);
 
-const SNOMED_DEFINITIONS = getSnomedDefinitions();
+let SNOMED_DEFINITIONS;
 
 async function downloadIfNotExists(url) {
   const filename = url.split('/').reverse()[0].split('?')[0];
@@ -207,6 +207,8 @@ async function loadDataIntoMemory(dir) {
   // that is up to date we don't need to do it.
 
   const simpleDefs = {};
+
+  SNOMED_DEFINITIONS = getSnomedDefinitions();
 
   Object.keys(allConcepts).forEach((conceptId) => {
     if (SNOMED_DEFINITIONS[conceptId]) {
