@@ -21,7 +21,6 @@ const FILES_DIR = path.join(__dirname, 'files');
 const ZIP_DIR = ensureDir(path.join(FILES_DIR, 'zip'), true);
 const RAW_DIR = ensureDir(path.join(FILES_DIR, 'raw'), true);
 const PROCESSED_DIR = ensureDir(path.join(FILES_DIR, 'processed'), true);
-const CODE_LOOKUP = path.join(FILES_DIR, 'code-lookup.json');
 
 const existingFiles = readdirSync(ZIP_DIR);
 
@@ -69,13 +68,10 @@ async function extractZip(zipFile) {
   return name;
 }
 
-function getFileNames(dir, startingFromProjectDir) {
+function getFileNames(dir) {
   const rawFilesDir = path.join(RAW_DIR, dir);
   const version = path.basename(dir);
   const processedFilesDir = path.join(PROCESSED_DIR, dir);
-  const processedFilesDirShallow = startingFromProjectDir
-    ? path.join('files', 'processed', dir)
-    : processedFilesDir;
   const definitionFile1 = path.join(processedFilesDir, 'defs-0-9999.json');
   const definitionFile2 = path.join(processedFilesDir, 'defs-10000+.json');
   const refSetFile1 = path.join(processedFilesDir, 'refSets-0-9999.json');
@@ -108,7 +104,6 @@ function getFileNames(dir, startingFromProjectDir) {
     refSetFile1Brotli,
     refSetFile2Brotli,
     processedFilesDir,
-    processedFilesDirShallow,
   };
 }
 
@@ -128,8 +123,6 @@ async function loadDataIntoMemory(dir) {
     existsSync(refSetFile2)
   ) {
     console.log(`> The json files already exist so I'll move on...`);
-    // const definitions = JSON.parse(readFileSync(definitionFile));
-    // const refSets = JSON.parse(readFileSync(definitionFile));
     return dir;
   }
   ensureDir(processedFilesDir, true);
@@ -209,60 +202,10 @@ async function loadDataIntoMemory(dir) {
     };
   });
 
-  const snomedDefsSize = Object.keys(SNOMED_DEFINITIONS).length;
-  const TERM_DIR = path.join(DRUG_DIR, 'Full', 'Terminology');
-  const descFile = path.join(
-    TERM_DIR,
-    readdirSync(TERM_DIR).filter((x) => x.indexOf('_Description_') > -1)[0]
-  );
-  readFileSync(descFile, 'utf8')
-    .split('\n')
-    .forEach((row) => {
-      const [
-        id,
-        effectiveTime,
-        active,
-        moduleId,
-        conceptId,
-        languageCode,
-        typeId,
-        term,
-        caseSignificanceId,
-      ] = row.replace(/\r/g, '').split('\t');
-      if (id === 'id' || !conceptId) return;
+  // Previously at this point we loaded the defintion files from the zip,
+  // but all the data is already in the SNOMED dictionary so as long as
+  // that is up to date we don't need to do it.
 
-      if (!SNOMED_DEFINITIONS[conceptId]) SNOMED_DEFINITIONS[conceptId] = {};
-      if (!SNOMED_DEFINITIONS[conceptId][id]) {
-        SNOMED_DEFINITIONS[conceptId][id] = { t: term, e: effectiveTime };
-        if (active === '1') {
-          SNOMED_DEFINITIONS[conceptId][id].a = 1;
-        }
-        if (typeId === '900000000000003001') {
-          SNOMED_DEFINITIONS[conceptId][id].m = 1;
-        }
-      } else {
-        if (effectiveTime > SNOMED_DEFINITIONS[conceptId][id].e) {
-          SNOMED_DEFINITIONS[conceptId][id].t = term;
-          SNOMED_DEFINITIONS[conceptId][id].e = effectiveTime;
-          if (active === '1') {
-            SNOMED_DEFINITIONS[conceptId][id].a = 1;
-          } else {
-            delete SNOMED_DEFINITIONS[conceptId][id].a;
-          }
-          if (typeId === '900000000000003001') {
-            SNOMED_DEFINITIONS[conceptId][id].m = 1;
-          } else {
-            delete SNOMED_DEFINITIONS[conceptId][id].m;
-          }
-        }
-      }
-    });
-  //
-  console.log(
-    `> Description file loaded and added to main SNOMED dictionary.
-  Previously the SNOMED dictionary had ${snomedDefsSize} concepts.
-  It now has ${Object.keys(SNOMED_DEFINITIONS).length} concepts.`
-  );
   const simpleDefs = {};
 
   Object.keys(allConcepts).forEach((conceptId) => {
@@ -322,8 +265,9 @@ async function loadDataIntoMemory(dir) {
       }
       console.log(`ERROR - no defintions found at all for ${conceptId}`);
     } else {
-      //console.log(conceptId);
-      //TODO? maybe keep track of them here?
+      console.log(
+        `> The conceptId (${conceptId}) was not found in the snomed dictionary.`
+      );
     }
   });
 
@@ -364,70 +308,17 @@ async function loadDataIntoMemory(dir) {
 
   // Find snomed codes without definition
 
-  // First get the lookup of unknown codes
-  const knownCodeLookup = existsSync(CODE_LOOKUP)
-    ? JSON.parse(readFileSync(CODE_LOOKUP, 'utf8'))
-    : {};
-
   const unknownCodes = Object.values(simpleRefSets)
     .map((x) => x.active.concat(x.inactive))
     .flat()
-    .filter((conceptId) => !simpleDefs[conceptId])
-    .map((conceptId) => {
-      if (knownCodeLookup[conceptId]) {
-        simpleDefs[conceptId] = knownCodeLookup[conceptId];
-        return false;
-      }
-      return conceptId;
-    })
-    .filter(Boolean);
+    .filter((conceptId) => !simpleDefs[conceptId]);
 
   if (unknownCodes.length > 0) {
     console.log(
-      `> There are ${unknownCodes.length} codes without a definition.term`
+      `> There are ${unknownCodes.length} unknown codes. This shouldn't happen.`
     );
-    console.log(`> Attempting to look them up in the NHS SNOMED browser...`);
-  }
-
-  async function process40UnknownConcepts(items) {
-    console.log(`Looking up next 40 (out of ${items.length})`);
-    const next40 = items.splice(0, 40);
-    const fetches = next40.map((x) => {
-      return fetch(
-        `https://termbrowser.nhs.uk/sct-browser-api/snomed/uk-edition/v20230927/concepts/${x}`
-      ).then((x) => x.json());
-    });
-    const results = await Promise.all(fetches).catch((err) => {
-      console.log(
-        'Error retrieving data from NHS SNOMED browser. Rerunning will probably be fine.'
-      );
-      process.exit();
-    });
-    results.forEach(({ conceptId, fsn, effectiveTime, active }) => {
-      const def = {
-        t: fsn,
-        e: effectiveTime,
-        m: 1,
-      };
-      if (active) def.a = 1;
-      knownCodeLookup[conceptId] = def;
-      simpleDefs[conceptId] = def;
-    });
-    writeFileSync(CODE_LOOKUP, JSON.stringify(knownCodeLookup, null, 2));
-    const next = 2000 + Math.random() * 5000;
-    if (items.length > 0) {
-      console.log(`Waiting ${next} milliseconds before next batch...`);
-      return new Promise((resolve) => {
-        setTimeout(async () => {
-          await process40UnknownConcepts(items);
-          return resolve();
-        }, next);
-      });
-    }
-  }
-
-  if (unknownCodes.length > 0) {
-    await process40UnknownConcepts(unknownCodes);
+    console.log(unknownCodes.join('\n'));
+    process.exit();
   }
 
   const simpleDefsLT10000 = {};
@@ -474,8 +365,6 @@ function compressJson(dir) {
     existsSync(refSetFile2Brotli)
   ) {
     console.log(`> The brotli files already exist so I'll move on...`);
-    // const definitions = JSON.parse(readFileSync(definitionFile));
-    // const refSets = JSON.parse(readFileSync(definitionFile));
     return dir;
   }
 
@@ -496,9 +385,8 @@ async function upload(dir) {
     refSetFile1,
     refSetFile2,
     version,
-  } = getFileNames(dir, true);
+  } = getFileNames(dir);
 
-  console.log(version);
   await uploadToR2(
     definitionFile1,
     path.join('NHS-DRUG-REFSET', version, path.basename(definitionFile1))
