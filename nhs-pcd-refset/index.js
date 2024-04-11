@@ -7,105 +7,19 @@
  *
  */
 
-import {
-  existsSync,
-  readFileSync,
-  readdirSync,
-  createWriteStream,
-  createReadStream,
-  writeFileSync,
-} from 'fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import path from 'path';
-import unzip from 'unzip-stream';
 import { brotliCompress } from '../lib/brotli-compress.js';
 import { uploadToR2 } from '../lib/cloudflare.js';
-import { getLatestPcdRefsetUrl, downloadFile } from '../lib/trud.js';
 import { ensureDir, getSnomedDefinitions, getDirName } from '../lib/utils.js';
 
 const __dirname = getDirName(import.meta.url);
 
-const FILES_DIR = path.join(__dirname, 'files');
-const ZIP_DIR = ensureDir(path.join(FILES_DIR, 'zip/'), true);
+const FILES_DIR = path.join(__dirname, '..', 'files', 'nhs-pcd-refsets');
 const RAW_DIR = ensureDir(path.join(FILES_DIR, 'raw'), true);
 const PROCESSED_DIR = ensureDir(path.join(FILES_DIR, 'processed'), true);
 
-const existingFiles = readdirSync(ZIP_DIR);
-
 let SNOMED_DEFINITIONS;
-
-async function downloadIfNotExists({ url }) {
-  const zipFileName = url.split('/').reverse()[0].split('?')[0];
-  console.log(`> Target zip file on TRUD is ${zipFileName}`);
-
-  if (existingFiles.indexOf(zipFileName) > -1) {
-    console.log(`> The zip file already exists so no need to download again.`);
-    return { zipFileName };
-  }
-
-  console.log(`> That zip is not stored locally. Downloading...`);
-  const outputFile = path.join(ZIP_DIR, zipFileName);
-
-  await downloadFile(url, outputFile);
-
-  return { zipFileName };
-}
-
-async function extractZip({ zipFileName }) {
-  const dirName = zipFileName.replace('.zip', '');
-  const file = path.join(ZIP_DIR, zipFileName);
-  const outDir = path.join(RAW_DIR, dirName);
-  if (existsSync(outDir)) {
-    console.log(
-      `> The directory ${outDir} already exists, so I'm not unzipping.`
-    );
-    return { dirName };
-  }
-  console.log(`> The directory ${outDir} does not yet exist. Creating...`);
-  ensureDir(outDir, true);
-  console.log(`> Extracting files from the zip...`);
-  let toUnzip = 0;
-  let unzipped = 0;
-  let isRead = false;
-  await new Promise((resolve) => {
-    createReadStream(file)
-      .pipe(unzip.Parse())
-      .on('entry', function (entry) {
-        /*
-              file.path.toLowerCase().indexOf('full') > -1
-      file.path.toLowerCase().indexOf('readme') > -1
-      file.path.toLowerCase().indexOf('information') > -1
-        */
-        if (
-          entry.path.toLowerCase().match(/full.+content.+refset_simple/) ||
-          entry.path.toLowerCase().match(/full.+sct2_description/)
-        ) {
-          console.log(`> Extracting ${entry.path}...`);
-          toUnzip++;
-          const outputFilePath = path.join(outDir, entry.path);
-          const outStream = createWriteStream(ensureDir(outputFilePath));
-          outStream.on('finish', () => {
-            console.log(`> Extracted ${entry.path}.`);
-            unzipped++;
-            if (isRead && toUnzip === unzipped) {
-              return resolve();
-            }
-          });
-          entry.pipe(outStream);
-        } else {
-          entry.autodrain();
-        }
-      })
-      .on('end', () => {
-        console.log(`> Finished reading zip file.`);
-        isRead = true;
-        if (toUnzip === unzipped) {
-          return resolve();
-        }
-      });
-  });
-  console.log(`> ${unzipped} files extracted.`);
-  return { dirName };
-}
 
 function getFileNames(dir) {
   const rawFilesDir = path.join(RAW_DIR, dir);
@@ -404,10 +318,15 @@ async function upload(dir) {
 }
 
 async function processLatestNHSPCDRefsets() {
-  await getLatestPcdRefsetUrl()
-    .then(downloadIfNotExists)
-    .then(extractZip)
-    .then(loadDataIntoMemory)
+  const pcdRefsetLatestFile = path.join(FILES_DIR, 'latest.json');
+  if (!existsSync(pcdRefsetLatestFile)) {
+    console.log(
+      '> There should be a file called latest.json under files/nhs-pcd-refsets/. You need to run again to download the latest zip files.'
+    );
+    process.exit();
+  }
+  const latestPcdRefset = JSON.parse(readFileSync(pcdRefsetLatestFile, 'utf8'));
+  await loadDataIntoMemory({ dirName: path.basename(latestPcdRefset.outDir) })
     .then(compressJson)
     .then(upload);
 }

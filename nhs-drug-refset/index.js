@@ -9,69 +9,25 @@
 
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import path from 'path';
-import decompress from 'decompress';
 import { brotliCompress } from '../lib/brotli-compress.js';
 import { uploadToR2 } from '../lib/cloudflare.js';
-import { getLatestDrugRefsetUrl, downloadFile } from '../lib/trud.js';
 import { ensureDir, getSnomedDefinitions, getDirName } from '../lib/utils.js';
 
 const __dirname = getDirName(import.meta.url);
 
-const FILES_DIR = path.join(__dirname, 'files');
-const ZIP_DIR = ensureDir(path.join(FILES_DIR, 'zip'), true);
+const FILES_DIR = path.join(__dirname, '..', 'files', 'snomed', 'drugs');
 const RAW_DIR = ensureDir(path.join(FILES_DIR, 'raw'), true);
-const PROCESSED_DIR = ensureDir(path.join(FILES_DIR, 'processed'), true);
-
-const existingFiles = readdirSync(ZIP_DIR);
+const PROCESSED_DIR = ensureDir(
+  path.join(__dirname, '..', 'files', 'nhs-drug-refsets', 'processed'),
+  true
+);
 
 let SNOMED_DEFINITIONS;
 
-async function downloadIfNotExists(url) {
-  const filename = url.split('/').reverse()[0].split('?')[0];
-  console.log(`> The most recent zip file on TRUD is ${filename}`);
-
-  if (existingFiles.indexOf(filename) > -1) {
-    console.log(`> The zip file already exists so no need to download again.`);
-    return filename;
-  }
-
-  console.log(`> That zip is not stored locally. Downloading...`);
-  const outputFile = path.join(ZIP_DIR, filename);
-
-  await downloadFile(url, outputFile);
-
-  return filename;
-}
-
-async function extractZip(zipFile) {
-  const name = zipFile.replace('.zip', '');
-  const file = path.join(ZIP_DIR, zipFile);
-  const outDir = path.join(RAW_DIR, name);
-  if (existsSync(outDir)) {
-    console.log(
-      `> The directory ${outDir} already exists, so I'm not unzipping.`
-    );
-    return name;
-  }
-  console.log(`> The directory ${outDir} does not yet exist. Creating...`);
-  ensureDir(outDir, true);
-  console.log(`> Extracting files from the zip...`);
-  const files = await decompress(file, outDir, {
-    filter: (file) => {
-      if (file.path.toLowerCase().indexOf('full') > -1) return true;
-      if (file.path.toLowerCase().indexOf('readme') > -1) return true;
-      if (file.path.toLowerCase().indexOf('information') > -1) return true;
-      return false;
-    },
-  });
-  console.log(`> ${files.length} files extracted.`);
-  return name;
-}
-
-function getFileNames(dir) {
-  const rawFilesDir = path.join(RAW_DIR, dir);
-  const version = path.basename(dir);
-  const processedFilesDir = path.join(PROCESSED_DIR, dir);
+function getFileNames(dirName) {
+  const rawFilesDir = path.join(RAW_DIR, dirName);
+  const version = path.basename(dirName);
+  const processedFilesDir = path.join(PROCESSED_DIR, dirName);
   const definitionFile1 = path.join(processedFilesDir, 'defs-0-9999.json');
   const definitionFile2 = path.join(processedFilesDir, 'defs-10000+.json');
   const refSetFile1 = path.join(processedFilesDir, 'refSets-0-9999.json');
@@ -107,7 +63,7 @@ function getFileNames(dir) {
   };
 }
 
-async function loadDataIntoMemory(dir) {
+async function loadDataIntoMemory({ dirName }) {
   const {
     processedFilesDir,
     rawFilesDir,
@@ -115,7 +71,7 @@ async function loadDataIntoMemory(dir) {
     definitionFile2,
     refSetFile1,
     refSetFile2,
-  } = getFileNames(dir);
+  } = getFileNames(dirName);
   if (
     existsSync(definitionFile1) &&
     existsSync(definitionFile2) &&
@@ -123,7 +79,7 @@ async function loadDataIntoMemory(dir) {
     existsSync(refSetFile2)
   ) {
     console.log(`> The json files already exist so I'll move on...`);
-    return dir;
+    return { dirName };
   }
   ensureDir(processedFilesDir, true);
 
@@ -202,13 +158,63 @@ async function loadDataIntoMemory(dir) {
     };
   });
 
-  // Previously at this point we loaded the defintion files from the zip,
-  // but all the data is already in the SNOMED dictionary so as long as
-  // that is up to date we don't need to do it.
+  SNOMED_DEFINITIONS = getSnomedDefinitions();
+  const snomedDefsSize = Object.keys(SNOMED_DEFINITIONS).length;
+  const TERM_DIR = path.join(DRUG_DIR, 'Full', 'Terminology');
+  const descFile = path.join(
+    TERM_DIR,
+    readdirSync(TERM_DIR).filter((x) => x.indexOf('_Description_') > -1)[0]
+  );
+  readFileSync(descFile, 'utf8')
+    .split('\n')
+    .forEach((row) => {
+      const [
+        id,
+        effectiveTime,
+        active,
+        moduleId,
+        conceptId,
+        languageCode,
+        typeId,
+        term,
+        caseSignificanceId,
+      ] = row.replace(/\r/g, '').split('\t');
+      if (id === 'id' || !conceptId) return;
+
+      if (!SNOMED_DEFINITIONS[conceptId]) SNOMED_DEFINITIONS[conceptId] = {};
+      if (!SNOMED_DEFINITIONS[conceptId][id]) {
+        SNOMED_DEFINITIONS[conceptId][id] = { t: term, e: effectiveTime };
+        if (active === '1') {
+          SNOMED_DEFINITIONS[conceptId][id].a = 1;
+        }
+        if (typeId === '900000000000003001') {
+          SNOMED_DEFINITIONS[conceptId][id].m = 1;
+        }
+      } else {
+        if (effectiveTime > SNOMED_DEFINITIONS[conceptId][id].e) {
+          SNOMED_DEFINITIONS[conceptId][id].t = term;
+          SNOMED_DEFINITIONS[conceptId][id].e = effectiveTime;
+          if (active === '1') {
+            SNOMED_DEFINITIONS[conceptId][id].a = 1;
+          } else {
+            delete SNOMED_DEFINITIONS[conceptId][id].a;
+          }
+          if (typeId === '900000000000003001') {
+            SNOMED_DEFINITIONS[conceptId][id].m = 1;
+          } else {
+            delete SNOMED_DEFINITIONS[conceptId][id].m;
+          }
+        }
+      }
+    });
+  //
+  console.log(
+    `> Description file loaded and added to main SNOMED dictionary.
+    Previously the SNOMED dictionary had ${snomedDefsSize} concepts.
+    It now has ${Object.keys(SNOMED_DEFINITIONS).length} concepts.`
+  );
 
   const simpleDefs = {};
-
-  SNOMED_DEFINITIONS = getSnomedDefinitions();
 
   Object.keys(allConcepts).forEach((conceptId) => {
     if (SNOMED_DEFINITIONS[conceptId]) {
@@ -346,10 +352,10 @@ async function loadDataIntoMemory(dir) {
   writeFileSync(refSetFile1, JSON.stringify(simpleRefSetsLT10000, null, 2));
   writeFileSync(refSetFile2, JSON.stringify(simpleRefSets10000PLUS, null, 2));
 
-  return dir;
+  return { dirName };
 }
 
-function compressJson(dir) {
+function compressJson({ dirName }) {
   const {
     definitionFile1,
     definitionFile2,
@@ -359,7 +365,7 @@ function compressJson(dir) {
     definitionFileBrotli2,
     refSetFile1Brotli,
     refSetFile2Brotli,
-  } = getFileNames(dir);
+  } = getFileNames(dirName);
   if (
     existsSync(definitionFileBrotli1) &&
     existsSync(definitionFileBrotli2) &&
@@ -367,7 +373,7 @@ function compressJson(dir) {
     existsSync(refSetFile2Brotli)
   ) {
     console.log(`> The brotli files already exist so I'll move on...`);
-    return dir;
+    return { dirName };
   }
 
   console.log('> Starting compression. TAKES A WHILE - GO GET A CUP OF TEA!');
@@ -377,17 +383,17 @@ function compressJson(dir) {
   brotliCompress(definitionFile1);
   brotliCompress(definitionFile2);
   console.log(`> All compressed.`);
-  return dir;
+  return { dirName };
 }
 
-async function upload(dir) {
+async function upload({ dirName }) {
   const {
     definitionFile1,
     definitionFile2,
     refSetFile1,
     refSetFile2,
     version,
-  } = getFileNames(dir);
+  } = getFileNames(dirName);
 
   await uploadToR2(
     definitionFile1,
@@ -408,10 +414,17 @@ async function upload(dir) {
 }
 
 async function processLatestNHSDrugRefsets() {
-  await getLatestDrugRefsetUrl()
-    .then(downloadIfNotExists)
-    .then(extractZip)
-    .then(loadDataIntoMemory)
+  const drugRefsetLatestFile = path.join(FILES_DIR, 'latest.json');
+  if (!existsSync(drugRefsetLatestFile)) {
+    console.log(
+      '> There should be a file called latest.json under files/snomed/drugs. You need to run again to download the latest zip files.'
+    );
+    process.exit();
+  }
+  const latestDrugRefset = JSON.parse(
+    readFileSync(drugRefsetLatestFile, 'utf8')
+  );
+  await loadDataIntoMemory({ dirName: path.basename(latestDrugRefset.outDir) })
     .then(compressJson)
     .then(upload);
 }
