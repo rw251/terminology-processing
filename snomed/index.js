@@ -22,7 +22,7 @@ import { JsonStreamStringify } from 'json-stream-stringify';
 import path from 'path';
 import { uploadToR2 } from '../lib/cloudflare.js';
 import { generateTrie, processWords } from '../lib/word-utils.js';
-import { ensureDir, getDirName } from '../lib/utils.js';
+import { ensureDir, getDirName, recordKey } from '../lib/utils.js';
 
 const __dirname = getDirName(import.meta.url);
 
@@ -402,22 +402,18 @@ async function upload({ dirName, drugDirName }) {
       dirName,
       drugDirName,
     });
+  const r2Path = path.join('SNOMED', version);
   await uploadToR2(
     singleDefinitionFile,
-    path.join('SNOMED', version, path.basename(singleDefinitionFile))
+    path.join(r2Path, path.basename(singleDefinitionFile))
   );
   await uploadToR2(
     relationsFile,
-    path.join('SNOMED', version, path.basename(relationsFile))
+    path.join(r2Path, path.basename(relationsFile))
   );
-  await uploadToR2(
-    trieFile,
-    path.join('SNOMED', version, path.basename(trieFile))
-  );
-  await uploadToR2(
-    wordsFile,
-    path.join('SNOMED', version, path.basename(wordsFile))
-  );
+  await uploadToR2(trieFile, path.join(r2Path, path.basename(trieFile)));
+  await uploadToR2(wordsFile, path.join(r2Path, path.basename(wordsFile)));
+  recordKey('snomed', { name: dirName, r2Path });
   return { dirName, drugDirName };
 }
 

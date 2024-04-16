@@ -9,8 +9,7 @@ import { join } from 'path';
 import { brotliCompress } from '../lib/brotli-compress.js';
 import { uploadToR2 } from '../lib/cloudflare.js';
 import { generateTrie, processWords } from '../lib/word-utils.js';
-import 'dotenv/config';
-import { getDirName } from '../lib/utils.js';
+import { getDirName, recordKey } from '../lib/utils.js';
 const __dirname = getDirName(import.meta.url);
 
 const DIR = join(__dirname, 'files', 'raw');
@@ -112,6 +111,11 @@ async function processOldDictionaries() {
       join(...file.folder.split('-').concat([file.name]))
     );
   }
+  recordKey('readv2', {
+    name: readv2Dir,
+    r2Path: join(...readv2Dir.split('-')),
+  });
+  recordKey('ctv3', { name: ctv3Dir, r2Path: join(...ctv3Dir.split('-')) });
 }
 
 export { processOldDictionaries };

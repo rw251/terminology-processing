@@ -11,7 +11,12 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import path from 'path';
 import { brotliCompress } from '../lib/brotli-compress.js';
 import { uploadToR2 } from '../lib/cloudflare.js';
-import { ensureDir, getSnomedDefinitions, getDirName } from '../lib/utils.js';
+import {
+  ensureDir,
+  getSnomedDefinitions,
+  getDirName,
+  recordKey,
+} from '../lib/utils.js';
 
 const __dirname = getDirName(import.meta.url);
 
@@ -395,22 +400,19 @@ async function upload({ dirName }) {
     version,
   } = getFileNames(dirName);
 
+  const r2Path = path.join('NHS-DRUG-REFSET', version);
+
   await uploadToR2(
     definitionFile1,
-    path.join('NHS-DRUG-REFSET', version, path.basename(definitionFile1))
+    path.join(r2Path, path.basename(definitionFile1))
   );
   await uploadToR2(
     definitionFile2,
-    path.join('NHS-DRUG-REFSET', version, path.basename(definitionFile2))
+    path.join(r2Path, path.basename(definitionFile2))
   );
-  await uploadToR2(
-    refSetFile1,
-    path.join('NHS-DRUG-REFSET', version, path.basename(refSetFile1))
-  );
-  await uploadToR2(
-    refSetFile2,
-    path.join('NHS-DRUG-REFSET', version, path.basename(refSetFile2))
-  );
+  await uploadToR2(refSetFile1, path.join(r2Path, path.basename(refSetFile1)));
+  await uploadToR2(refSetFile2, path.join(r2Path, path.basename(refSetFile2)));
+  return r2Path;
 }
 
 async function processLatestNHSDrugRefsets() {
@@ -424,9 +426,11 @@ async function processLatestNHSDrugRefsets() {
   const latestDrugRefset = JSON.parse(
     readFileSync(drugRefsetLatestFile, 'utf8')
   );
-  await loadDataIntoMemory({ dirName: path.basename(latestDrugRefset.outDir) })
+  const dirName = path.basename(latestDrugRefset.outDir);
+  const r2Path = await loadDataIntoMemory({ dirName })
     .then(compressJson)
     .then(upload);
+  recordKey('nhs-drug-refset', { name: dirName, r2Path });
 }
 
 export { processLatestNHSDrugRefsets };

@@ -3,14 +3,20 @@ import { processOldDictionaries } from './readv2-ctv3/index.js';
 import { processLatestSNOMED } from './snomed/index.js';
 import { processLatestNHSDrugRefsets } from './nhs-drug-refset/index.js';
 import { processLatestNHSPCDRefsets } from './nhs-pcd-refset/index.js';
+import { processBNF } from './bnf/index.js';
 import { downloadAndExtractLatestZips } from './lib/trud.js';
 
+// processLatestNHSPCDRefsets();
 const choices = [
   {
     name: 'Download and extract the latest zip files',
     value: downloadAndExtractLatestZips,
   },
   { name: 'Process the latest SNOMED dictionary', value: processLatestSNOMED },
+  {
+    name: 'Process the latest BNF to SNOMED mapping file',
+    value: processBNF,
+  },
   {
     name: 'Process the latest NHS drug refsets (non-drug refsets)',
     value: processLatestNHSDrugRefsets,
@@ -34,6 +40,7 @@ process.kill = () => {
 
 async function askQuestion() {
   const name = 'choice';
+  console.log('\n');
   inquirer
     .prompt([
       {

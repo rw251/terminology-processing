@@ -11,7 +11,12 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import path from 'path';
 import { brotliCompress } from '../lib/brotli-compress.js';
 import { uploadToR2 } from '../lib/cloudflare.js';
-import { ensureDir, getSnomedDefinitions, getDirName } from '../lib/utils.js';
+import {
+  ensureDir,
+  getSnomedDefinitions,
+  getDirName,
+  recordKey,
+} from '../lib/utils.js';
 
 const __dirname = getDirName(import.meta.url);
 
@@ -302,19 +307,18 @@ function compressJson(dir) {
 }
 
 async function upload(dir) {
-  const { definitionJsonFile, refSetJsonFile, version } = getFileNames(
-    dir,
-    true
-  );
+  const { definitionJsonFile, refSetJsonFile, version } = getFileNames(dir);
 
+  const r2Path = path.join('NHS-PCD-REFSET', version);
   await uploadToR2(
     definitionJsonFile,
-    path.join('NHS-PCD-REFSET', version, path.basename(definitionJsonFile))
+    path.join(r2Path, path.basename(definitionJsonFile))
   );
   await uploadToR2(
     refSetJsonFile,
-    path.join('NHS-PCD-REFSET', version, path.basename(refSetJsonFile))
+    path.join(r2Path, path.basename(refSetJsonFile))
   );
+  return r2Path;
 }
 
 async function processLatestNHSPCDRefsets() {
@@ -326,9 +330,11 @@ async function processLatestNHSPCDRefsets() {
     process.exit();
   }
   const latestPcdRefset = JSON.parse(readFileSync(pcdRefsetLatestFile, 'utf8'));
-  await loadDataIntoMemory({ dirName: path.basename(latestPcdRefset.outDir) })
+  const dirName = path.basename(latestPcdRefset.outDir);
+  const r2Path = await loadDataIntoMemory({ dirName })
     .then(compressJson)
     .then(upload);
+  recordKey('nhs-pcd-refset', { name: dirName, r2Path });
 }
 
 export { processLatestNHSPCDRefsets };
