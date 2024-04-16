@@ -49,7 +49,7 @@ async function loadDataIntoMemory({ dirName }) {
   const { processedFilesDir, rawFilesDir, definitionJsonFile, refSetJsonFile } =
     getFileNames(dirName);
   if (existsSync(definitionJsonFile) && existsSync(refSetJsonFile)) {
-    console.log(`> The json files already exist so I'll move on...`);
+    log(`The json files already exist so I'll move on...`);
     return dirName;
   }
   ensureDir(processedFilesDir, true);
@@ -91,10 +91,10 @@ async function loadDataIntoMemory({ dirName }) {
         }
       } else {
         if (refSets[refsetId][id].conceptId !== referencedComponentId) {
-          console.log(
+          log(
             `An unexpected error. I thought that if the id (${id}) was the same, then the conceptid (${referencedComponentId}) would be the same.`
           );
-          console.log('Need to rewrite the code...');
+          log('Need to rewrite the code...');
           process.exit();
         }
         if (effectiveTime > refSets[refsetId][id].effectiveTime) {
@@ -104,9 +104,7 @@ async function loadDataIntoMemory({ dirName }) {
       }
       allConcepts[referencedComponentId] = true;
     });
-  console.log(
-    `> Ref set file loaded. It has ${Object.keys(refSets).length} rows.`
-  );
+  log(`Ref set file loaded. It has ${Object.keys(refSets).length} rows.`);
 
   // Now process it a bit
   Object.keys(refSets).forEach((refSetId) => {
@@ -180,8 +178,8 @@ async function loadDataIntoMemory({ dirName }) {
       }
     });
   //
-  console.log(
-    `> Description file loaded and added to main SNOMED dictionary.
+  log(
+    `Description file loaded and added to main SNOMED dictionary.
     Previously the SNOMED dictionary had ${snomedDefsSize} concepts.
     It now has ${Object.keys(SNOMED_DEFINITIONS).length} concepts.`
   );
@@ -243,9 +241,9 @@ async function loadDataIntoMemory({ dirName }) {
         simpleDefs[conceptId] = inactiveAndMSynDef[0];
         return;
       }
-      console.log(`ERROR - no defintions found at all for ${conceptId}`);
+      log(`ERROR - no defintions found at all for ${conceptId}`);
     } else {
-      //console.log(conceptId);
+      //log(conceptId);
       //TODO? maybe keep track of them here?
     }
   });
@@ -254,11 +252,10 @@ async function loadDataIntoMemory({ dirName }) {
 
   Object.keys(refSets).forEach((refSetId) => {
     if (!simpleDefs[refSetId])
-      console.log(`No description for refset with id: ${refSetId}`);
+      log(`No description for refset with id: ${refSetId}`);
     else {
       const def = simpleDefs[refSetId].t;
-      if (simpleRefSets[def])
-        console.log(`There is already an entry for: ${def}`);
+      if (simpleRefSets[def]) log(`There is already an entry for: ${def}`);
       else {
         simpleRefSets[def] = refSets[refSetId];
       }
@@ -273,8 +270,8 @@ async function loadDataIntoMemory({ dirName }) {
     .filter((conceptId) => !simpleDefs[conceptId]);
 
   if (unknownCodes.length > 0) {
-    console.log(
-      `> There are ${unknownCodes.length} unknown codes. This shouldn't happen.`
+    log(
+      `There are ${unknownCodes.length} unknown codes. This shouldn't happen.`
     );
     console.log(unknownCodes.join('\n'));
     process.exit();
@@ -294,15 +291,15 @@ function compressJson(dir) {
     refSetFileBrotli,
   } = getFileNames(dir);
   if (existsSync(definitionFileBrotli) && existsSync(refSetFileBrotli)) {
-    console.log(`> The brotli files already exist so I'll move on...`);
+    log(`The brotli files already exist so I'll move on...`);
     return dir;
   }
 
-  console.log('> Starting compression...');
+  log('Starting compression...');
 
   brotliCompress(refSetJsonFile);
   brotliCompress(definitionJsonFile);
-  console.log(`> All compressed.`);
+  log(`All compressed.`);
   return dir;
 }
 
@@ -324,8 +321,8 @@ async function upload(dir) {
 async function processLatestNHSPCDRefsets() {
   const pcdRefsetLatestFile = path.join(FILES_DIR, 'latest.json');
   if (!existsSync(pcdRefsetLatestFile)) {
-    console.log(
-      '> There should be a file called latest.json under files/nhs-pcd-refsets/. You need to run again to download the latest zip files.'
+    log(
+      'There should be a file called latest.json under files/nhs-pcd-refsets/. You need to run again to download the latest zip files.'
     );
     process.exit();
   }

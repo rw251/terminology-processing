@@ -22,7 +22,13 @@ import { JsonStreamStringify } from 'json-stream-stringify';
 import path from 'path';
 import { uploadToR2 } from '../lib/cloudflare.js';
 import { generateTrie, processWords } from '../lib/word-utils.js';
-import { ensureDir, getDirName, recordKey } from '../lib/utils.js';
+import {
+  ensureDir,
+  getDirName,
+  recordKey,
+  heading,
+  log,
+} from '../lib/utils.js';
 
 const __dirname = getDirName(import.meta.url);
 
@@ -165,7 +171,7 @@ async function loadDataIntoMemoryHelper(rawFilesDir) {
       descriptionFileDir,
       readdirSync(descriptionFileDir)[0]
     );
-    console.log(`> Reading the description file ${descriptionFile}...`);
+    log(`Reading the description file ${descriptionFile}...`);
     readFileSync(descriptionFile, 'utf8')
       .split('\n')
       .forEach((row) => {
@@ -219,7 +225,7 @@ async function loadDataIntoMemoryHelper(rawFilesDir) {
       readdirSync(relationshipFileDir)[1]
     );
 
-    console.log(`> Reading the relationship file ${relationshipFile}...`);
+    log(`Reading the relationship file ${relationshipFile}...`);
 
     const rl = readline.createInterface({
       input: createReadStream(relationshipFile),
@@ -288,11 +294,11 @@ async function loadDataIntoMemory({ dirName, drugDirName }) {
     existsSync(relationsFile) &&
     existsSync(readableRelationsFile)
   ) {
-    console.log(
-      `> The json files already exist so I'll move on once I've loaded the definition file into memory...`
+    log(
+      `The json files already exist so I'll move on once I've loaded the definition file into memory...`
     );
     definitions = JSON.parse(readFileSync(definitionFile, 'utf8'));
-    console.log('> Definitions loaded.');
+    log('Definitions loaded.');
     return { dirName, drugDirName };
   }
 
@@ -302,80 +308,78 @@ async function loadDataIntoMemory({ dirName, drugDirName }) {
   await loadDataIntoMemoryHelper(drugRawFilesDir);
 
   //
-  console.log(
-    `> Description file loaded. It has ${Object.keys(definitions).length} rows.`
+  log(
+    `Description file loaded. It has ${Object.keys(definitions).length} rows.`
   );
-  console.log('> Writing the description data to 3 JSON files.');
-  console.log('> First is defs-readable.json...');
+  log('Writing the description data to 3 JSON files.');
+  log('First is defs-readable.json...');
 
   await new Promise((resolve) => {
     const readableJsonStream = new JsonStreamStringify(definitions, null, 2);
     const streamReadable = createWriteStream(ensureDir(readableDefinitionFile));
     readableJsonStream.pipe(streamReadable);
     readableJsonStream.on('end', () => {
-      console.log('> defs-readable.json written');
+      log('defs-readable.json written');
       return resolve();
     });
   });
 
-  console.log('> Now defs.json...');
+  log('Now defs.json...');
   await new Promise((resolve) => {
     const jsonStream = new JsonStreamStringify(definitions);
 
     const stream = createWriteStream(ensureDir(definitionFile));
     jsonStream.pipe(stream);
     jsonStream.on('end', () => {
-      console.log('> defs.json written');
+      log('defs.json written');
       return resolve();
     });
   });
 
-  console.log(
-    '> Create a new lookup with just one definition per concept id...'
-  );
+  log('Create a new lookup with just one definition per concept id...');
   const bestDefs = {};
   Object.keys(definitions).forEach((conceptId) => {
     bestDefs[conceptId] = getBestDefinition(conceptId);
   });
 
-  console.log('> Now defs-single.json...');
+  log('Now defs-single.json...');
   await new Promise((resolve) => {
     const jsonStream = new JsonStreamStringify(bestDefs);
 
     const stream = createWriteStream(ensureDir(singleDefinitionFile));
     jsonStream.pipe(stream);
     jsonStream.on('end', () => {
-      console.log('> defs-single.json written');
+      log('defs-single.json written');
       return resolve();
     });
   });
 
-  console.log(
-    `> Relationships file loaded. It has ${
+  log(
+    `Relationships file loaded. It has ${
       Object.keys(relationships).length
     } rows.`
   );
-  console.log('> Writing the relationship data to 2 JSON files.');
-  console.log('> First is relationships-readable.json...');
+  log('Writing the relationship data to 2 JSON files.');
+  log('First is relationships-readable.json...');
 
   await new Promise((resolve) => {
     const readableJsonStream = new JsonStreamStringify(relationships, null, 2);
     const streamReadable = createWriteStream(ensureDir(readableRelationsFile));
     readableJsonStream.pipe(streamReadable);
     readableJsonStream.on('end', () => {
-      console.log('> relationships-readable.json written');
+      log('relationships-readable.json written');
       return resolve();
     });
   });
 
-  console.log('> Now relationships.json...');
+  log('Now relationships.json...');
   await new Promise((resolve) => {
     const jsonStream = new JsonStreamStringify(relationships);
 
     const stream = createWriteStream(ensureDir(relationsFile));
     jsonStream.pipe(stream);
     jsonStream.on('end', () => {
-      console.log('> relationships.json written');
+      log('relationships.json written');
       return resolve();
     });
   });
@@ -435,23 +439,23 @@ function copyToLatest({ dirName, drugDirName }) {
     latestWordsFile,
   } = getFileNames({ dirName, drugDirName });
 
-  console.log('> Copying defs.json to latest directory...');
+  log('Copying defs.json to latest directory...');
   // just copy to latest
   copyFileSync(definitionFile, ensureDir(latestDefsFile));
-  console.log('> Copying defs-readable.json to latest directory...');
+  log('Copying defs-readable.json to latest directory...');
   copyFileSync(readableDefinitionFile, ensureDir(latestReadableDefsFile));
-  console.log('> Copying defs-single.json to latest directory...');
+  log('Copying defs-single.json to latest directory...');
   copyFileSync(singleDefinitionFile, ensureDir(latestSingleDefsFile));
-  console.log('> Copying relationships.json to latest directory...');
+  log('Copying relationships.json to latest directory...');
   // just copy to latest
   copyFileSync(relationsFile, ensureDir(latestRelationsFile));
-  console.log('> Copying relationships-readable.json to latest directory...');
+  log('Copying relationships-readable.json to latest directory...');
   copyFileSync(readableRelationsFile, ensureDir(latestReadableRelationsFile));
-  console.log('> Copying trie.json to latest directory...');
+  log('Copying trie.json to latest directory...');
   copyFileSync(trieFile, ensureDir(latestTrieFile));
-  console.log('> Copying words.json to latest directory...');
+  log('Copying words.json to latest directory...');
   copyFileSync(wordsFile, ensureDir(latestWordsFile));
-  console.log('> All files copied.');
+  log('All files copied.');
 }
 
 function createTrie({ dirName, drugDirName }) {
@@ -461,7 +465,7 @@ function createTrie({ dirName, drugDirName }) {
   });
 
   if (existsSync(trieFile)) {
-    console.log('> trie.json already exists so no need to recreate.');
+    log('trie.json already exists so no need to recreate.');
     return { dirName, drugDirName };
   }
 
@@ -483,7 +487,7 @@ function createWordDictionary({ dirName, drugDirName }) {
   });
 
   if (existsSync(wordsFile)) {
-    console.log('> words.json already exists so no need to recreate.');
+    log('words.json already exists so no need to recreate.');
     return { dirName, drugDirName };
   }
 
@@ -498,11 +502,12 @@ function createWordDictionary({ dirName, drugDirName }) {
 }
 
 async function processLatestSNOMED() {
+  heading('Process latest SNOMED');
   const snomedLatestFile = path.join(MAIN_DIR, 'latest.json');
   const snomedLatestDrugFile = path.join(DRUGS_DIR, 'latest.json');
   if (!existsSync(snomedLatestFile) || !existsSync(snomedLatestDrugFile)) {
-    console.log(
-      '> There should be files called latest.json under files/xxx. You need to run again to download the latest zip files.'
+    log(
+      'There should be files called latest.json under files/xxx. You need to run again to download the latest zip files.'
     );
     process.exit();
   }

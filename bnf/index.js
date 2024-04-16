@@ -7,10 +7,16 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 
 import { read, utils } from 'xlsx';
-import { join, basename, dirname } from 'path';
+import { join, basename } from 'path';
 import { brotliCompress } from '../lib/brotli-compress.js';
 import { uploadToR2 } from '../lib/cloudflare.js';
-import { getDirName, ensureDir, heading, recordKey } from '../lib/utils.js';
+import {
+  getDirName,
+  ensureDir,
+  heading,
+  recordKey,
+  log,
+} from '../lib/utils.js';
 import { parse } from 'csv-parse/sync';
 const __dirname = getDirName(import.meta.url);
 
@@ -65,11 +71,11 @@ const alternative = {
 
 async function loadDataIntoMemoryHelper(dirName) {
   const file = readdirSync(join(RAW_DIR, dirName))[0];
-  console.log('> Loading the mapping xlsx file...');
+  log('Loading the mapping xlsx file...');
   const buf = readFileSync(join(RAW_DIR, dirName, file));
   const workbook = read(buf);
   const sheet_name_list = workbook.SheetNames;
-  console.log('> Loaded. Processing the data...');
+  log('Loaded. Processing the data...');
   const xlData = utils.sheet_to_json(workbook.Sheets[sheet_name_list[0]]);
   if (
     !xlData ||
@@ -77,7 +83,7 @@ async function loadDataIntoMemoryHelper(dirName) {
     !xlData[0]['BNF Code'] ||
     !xlData[0]['SNOMED Code']
   ) {
-    console.log('ERROR 33h: ');
+    log('ERROR 33h: ');
     process.exit();
   }
   const descriptions = {};
@@ -94,7 +100,7 @@ async function loadDataIntoMemoryHelper(dirName) {
       if (bnfCode && bnfName) {
         if (!descriptions[bnfName]) descriptions[bnfName] = bnfCode;
         else if (descriptions[bnfName] !== bnfCode) {
-          // console.log(`Multiple defs for ${bnfCode}`);
+          // log(`Multiple defs for ${bnfCode}`);
           if (!multiple[bnfName]) multiple[bnfName] = true;
         }
         const isShortDef = bnfName.match(/^(.+) \([^()]+\)$/);
@@ -135,12 +141,12 @@ async function loadDataIntoMemoryHelper(dirName) {
           bnfCode =
             descriptions[shortDescription] ||
             descriptions[`${shortDescription} tablets`];
-          // console.log(
+          // log(
           //   `Found ${bnfCode} (${shortDescription}) for ${description}`
           // );
         } else if (otherDefs[shortDescription]) {
           bnfCode = otherDefs[shortDescription];
-          //console.log(
+          //log(
           // `ALTERNATIVE Found ${bnfCode} (${shortDescription}) for ${description}`
           alternative[description] = {
             bnfCode,
@@ -163,14 +169,14 @@ async function loadDataIntoMemoryHelper(dirName) {
   );
 
   if (Object.keys(multiple).length > 15) {
-    console.log(
-      '> There are more duplicate descriptions with different BNF codes than expected. Please check the __multiple.json file.'
+    log(
+      'There are more duplicate descriptions with different BNF codes than expected. Please check the __multiple.json file.'
     );
     process.exit();
   }
   if (Object.keys(multiple2.rest).length > 30) {
-    console.log(
-      '> There are more duplicate short descriptions with different BNF codes than expected. Please check the __multiple2.json file.'
+    log(
+      'There are more duplicate short descriptions with different BNF codes than expected. Please check the __multiple2.json file.'
     );
     process.exit();
   }
@@ -247,7 +253,7 @@ async function loadDataIntoMemory({ dirName }) {
   const { processedFilesDir, mappingFile, readableMappingFile } =
     getFileNames(dirName);
   if (existsSync(mappingFile) && existsSync(readableMappingFile)) {
-    console.log(`> The json files already exist so I'll move on...`);
+    log(`The json files already exist so I'll move on...`);
     return dirName;
   }
   ensureDir(processedFilesDir, true);
@@ -271,15 +277,13 @@ async function loadDataIntoMemory({ dirName }) {
     JSON.stringify(alternative, null, 2)
   );
   //
-  console.log(
-    `> Mapping file loaded. It has ${Object.keys(mapping).length} rows.`
-  );
-  console.log('> Writing the mapping data to 2 JSON files.');
-  console.log('> First is bnf-map-readable.json...');
+  log(`Mapping file loaded. It has ${Object.keys(mapping).length} rows.`);
+  log('Writing the mapping data to 2 JSON files.');
+  log('First is bnf-map-readable.json...');
 
   writeFileSync(readableMappingFile, JSON.stringify(mapping, null, 2));
 
-  console.log('> Now bnf-map.json...');
+  log('Now bnf-map.json...');
   writeFileSync(mappingFile, JSON.stringify(mapping));
 
   return dirName;
@@ -288,12 +292,12 @@ async function loadDataIntoMemory({ dirName }) {
 function compressJson(dirName) {
   const { mappingFile, mappingFileBrotli } = getFileNames(dirName);
   if (existsSync(mappingFileBrotli)) {
-    console.log(`> The brotli files already exist so I'll move on...`);
+    log(`The brotli files already exist so I'll move on...`);
     return dirName;
   }
-  console.log('> Starting compression...');
+  log('Starting compression...');
   brotliCompress(mappingFile);
-  console.log(`> All compressed.`);
+  log(`All compressed.`);
   return dirName;
 }
 
@@ -308,8 +312,8 @@ async function processBNFMappingFiles() {
   heading('BNF mapping files');
   const bnfLatestFile = join(FILES_DIR, 'latest.json');
   if (!existsSync(bnfLatestFile)) {
-    console.log(
-      '> There should be a file called latest.json under files/bnf/. You need to run again to download the latest zip files.'
+    log(
+      'There should be a file called latest.json under files/bnf/. You need to run again to download the latest zip files.'
     );
     process.exit();
   }
@@ -326,8 +330,8 @@ async function processBNFHierarchy() {
 
   const bnfLatestHierarchyFile = join(FILES_DIR, 'latest-hierarchy.json');
   if (!existsSync(bnfLatestHierarchyFile)) {
-    console.log(
-      '> There should be a file called latest-hierarchy.json under files/bnf/. You need to run again to download the latest zip files.'
+    log(
+      'There should be a file called latest-hierarchy.json under files/bnf/. You need to run again to download the latest zip files.'
     );
     process.exit();
   }
@@ -335,7 +339,7 @@ async function processBNFHierarchy() {
   const dirName = await loadHierarchyIntoMemory(latestBNF.fileName);
 
   const { hierarchyJsonFile } = getFileNames(dirName);
-  console.log('> Starting compression...');
+  log('Starting compression...');
   brotliCompress(hierarchyJsonFile);
   const r2Path = join('BNF', dirName);
   await uploadToR2(

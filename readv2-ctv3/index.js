@@ -9,7 +9,7 @@ import { join } from 'path';
 import { brotliCompress } from '../lib/brotli-compress.js';
 import { uploadToR2 } from '../lib/cloudflare.js';
 import { generateTrie, processWords } from '../lib/word-utils.js';
-import { getDirName, recordKey } from '../lib/utils.js';
+import { getDirName, recordKey, log } from '../lib/utils.js';
 const __dirname = getDirName(import.meta.url);
 
 const DIR = join(__dirname, 'files', 'raw');
@@ -43,7 +43,7 @@ function processHierarchyFile(file, defs = {}, rels = {}) {
   return { defs, rels };
 }
 function processCTV3() {
-  console.log('> Loading and processing CTV3 files...');
+  log('Loading and processing CTV3 files...');
   const { defs, rels } = processHierarchyFile(join(CTV3_DIR, 'dict.txt'));
   writeFileSync(
     join(OUT_CTV3_DIR, defsCTV3Readable),
@@ -58,11 +58,11 @@ function processCTV3() {
   return defs;
 }
 function processReadv2() {
-  console.log('> Loading and processing Readv2 non-drug files...');
+  log('Loading and processing Readv2 non-drug files...');
   const { defs, rels } = processHierarchyFile(
     join(READv2_DIR, 'codes.dict.txt')
   );
-  console.log('> Loading and processing Readv2 drug files...');
+  log('Loading and processing Readv2 drug files...');
   const result = processHierarchyFile(
     join(READv2_DIR, 'drugs.dict.txt'),
     defs,
