@@ -17,7 +17,7 @@ const $searchResult = document.querySelector(
   '.autocomplete-search-box .search-result'
 );
 
-const workerUrl = '/worker.js?v=1.1.10';
+const workerUrl = '/worker.js?v=1.1.11';
 const worker = {
   ctv3: new Worker(workerUrl, { name: 'ctv3' }),
   readv2: new Worker(workerUrl, { name: 'readv2' }),
