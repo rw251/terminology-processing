@@ -16,6 +16,7 @@ import {
   getSnomedDefinitions,
   getDirName,
   recordKey,
+  log,
 } from '../lib/utils.js';
 
 const __dirname = getDirName(import.meta.url);

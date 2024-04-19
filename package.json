@@ -6,10 +6,13 @@
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.540.0",
     "chalk": "^5.3.0",
+    "cpy-cli": "^5.0.0",
     "csv-parse": "^5.5.5",
     "dotenv": "^16.4.5",
+    "http-server": "^14.1.1",
     "inquirer": "^9.2.17",
     "json-stream-stringify": "^3.1.4",
+    "replace-in-files-cli": "^2.2.0",
     "unzip-stream": "^0.3.1",
     "xlsx": "^0.18.5"
   },
@@ -17,7 +20,13 @@
   "keywords": [],
   "license": "ISC",
   "scripts": {
-    "start": "node index.js"
+    "copy": "cpy web/worker.template.js . --rename=worker.js",
+    "replace:dev": "replace-in-files --string='{URL}' --replacement='' web/worker.js",
+    "replace:prod": "replace-in-files --string='{URL}' --replacement=$URL web/worker.js",
+    "prestart": "npm run copy && npm run replace:dev",
+    "build": "npm run copy && npm run replace:prod",
+    "start": "http-server ./web --port 8954 --open --brotli",
+    "process": "node --max-old-space-size=4096 index.js"
   },
   "type": "module"
 }
