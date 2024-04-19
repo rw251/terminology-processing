@@ -1,0 +1,395 @@
+html, body {
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  font-family: arial, sans-serif;
+  font-size: 16px;
+}
+
+.wrapper {
+  display: grid;
+  grid-template-columns: 1fr;
+  column-gap: 0;
+  height: calc(100% - 102px);
+}
+
+select {
+  padding: 4px;
+  border: 1px solid #555555;
+  width: 220px;
+  margin-left: 20px;
+  background-color: #DBA515;
+  text-align: center;
+}
+
+option {
+  text-align: center;
+  padding: 4px;
+}
+
+option:disabled {
+  display: none;
+}
+
+li {
+  position: relative;
+  display: block;
+  padding: .5rem 1rem;
+  color: #212529;
+  text-decoration: none;
+  background-color: #fff;
+  border: 1px solid rgba(0,0,0,.125);
+}
+
+li:hover {
+  cursor: pointer;
+  background-color: #eeeeee;
+}
+
+li.selected {
+  background-color: yellow;
+}
+
+li span {
+  font-size: 0.8rem;
+}
+
+ul {
+  display: flex;
+  flex-direction: column;
+  padding-left: 0;
+  margin: 0;
+}
+
+li * {
+  pointer-events: none;
+}
+
+.text-input {
+  padding: 8px;
+  display: block;
+  border: 1px solid #cccccc;
+  width: 80%;
+  overflow: visible;
+  margin: 10px auto;
+  box-sizing: border-box;
+}
+
+/* LOADING indicator */
+.lds-facebook {
+  display: inline-block;
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+.lds-facebook div {
+  display: inline-block;
+  position: absolute;
+  left: 8px;
+  width: 16px;
+  background: #cfcfcf;
+  animation: lds-facebook 1.2s cubic-bezier(0, 0.5, 0.5, 1) infinite;
+}
+.loaded .lds-facebook {
+  display: none;
+}
+.loading .lds-facebook div {
+  left: 2px;
+  width: 4px;
+  animation: lds-facebook-small 1.2s cubic-bezier(0, 0.5, 0.5, 1) infinite;
+}
+.lds-facebook div:nth-child(1) {
+  left: 8px;
+  animation-delay: -0.24s;
+}
+.lds-facebook div:nth-child(2) {
+  left: 32px;
+  animation-delay: -0.12s;
+}
+.lds-facebook div:nth-child(3) {
+  left: 56px;
+  animation-delay: 0;
+}
+@keyframes lds-facebook {
+  0% {
+    top: 8px;
+    height: 64px;
+  }
+  50%, 100% {
+    top: 24px;
+    height: 32px;
+  }
+}
+.loading .lds-facebook {
+  width: 20px;
+  height: 14px;
+}
+.loading .lds-facebook div:nth-child(1) {
+  left: 2px;
+}
+.loading .lds-facebook div:nth-child(2) {
+  left: 8px;
+}
+.loading .lds-facebook div:nth-child(3) {
+  left: 14px;
+}
+@keyframes lds-facebook-small {
+  0% {
+    top: 2px;
+    height: 16px;
+  }
+  50%, 100% {
+    top: 6px;
+    height: 8px;
+  }
+}
+.loading {
+  color: rgb(211, 211, 211);
+}
+.loaded {
+  color: black;
+}
+
+/*TABLE*/
+table{
+  border-collapse: collapse;
+  width: 100%;
+  overflow: hidden;
+  margin-bottom: 10px;
+  table-layout: fixed;
+}
+thead > tr {
+  background: #eeeeee;
+  font-weight: bold;
+}
+
+td, th {
+  border: 1px solid #dddddd;
+  text-align: left;
+  padding: 8px;
+  position: relative;
+}
+
+tr.inactive {
+  background-color: #ff9898;
+}
+
+.hide-inactive tr.inactive {
+  display: none;
+}
+
+.scrollable {
+  overflow-y: auto;
+  /* Firefox understands this*/
+  /* scrollbar-color: #666666 #dddddd;
+  scrollbar-width: thin; */
+}
+
+/* other browsers understand this */
+/* ::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track-piece {
+  background-color: #dddddd;
+}
+
+::-webkit-scrollbar-thumb:vertical {
+  height: 20px;
+  background-color: #666666;
+} */
+
+h3 {
+  margin-top: 0;
+}
+
+.header {
+  margin-top: 10px;
+}
+
+button:hover {
+  background-color: #3aaf10;
+}
+button {
+  background-color: #4caf50;
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+button:disabled, button[disabled] {
+  background-color: #cccccc;
+  color: #666666;
+}
+
+.list {
+  border: 1px solid rgba(0,0,0,.125);
+}
+
+.banner {
+  padding: 5px;
+  text-align: center;
+  background: #14ba99;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  height: 26px;
+
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+/* .snomed-version {
+  padding: 6px;
+  background-color: #DBA515;
+  border-radius: 3px;
+} */
+
+/*TABS*/
+
+.tab-content {
+  transform: translateX(-4000px);
+  position: absolute;
+}
+
+.tab-content.focus {
+  transform: translateX(0px);
+}
+
+@media (min-width: 640px) {
+  .tab {
+    display: none;
+  }
+  .wrapper {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 10px;
+  }
+  .tab-content {
+    transform: translateX(0px);
+    position: inherit;
+  }
+}
+
+/* Style the tab */
+.tab {
+  overflow: hidden;
+  border-bottom: 1px solid #ccc;
+  /* background-color: #f1f1f1; */
+}
+
+/* Style the buttons inside the tab */
+.tab button.tablinks {
+  background-color: inherit;
+  color: gray;
+  margin: 0;
+  float: left;
+  border: none;
+  border-left: 1.5px solid white;
+  border-right: 1.5px solid white;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  transition: 0.3s;
+  font-size: 17px;
+}
+
+.tab button.tablinks.active {
+  background-color: #f1f1f1;
+  color:black;
+  border-left: 1.5px solid #cecece;
+  border-right: 1.5px solid #cecece;
+}
+
+/* Change background color of buttons on hover */
+.tab button:hover {
+  background-color: #ddd;
+  color:black;
+  border-left: 1.5px solid #ddd;
+  border-right: 1.5px solid #ddd;
+}
+
+/* Create an active/current tablink class */
+.tab button.active {
+  background-color: #ccc;
+}
+
+/* AUTOCOMPLETE DROP DOWN */
+.autocomplete-search-box {
+  box-sizing: border-box;
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.autocomplete-search-box .search-box {
+  margin: 10px 10% 0 5%;
+}
+
+.autocomplete-search-box .search-result {
+  width: 80%;
+  padding: 0;
+  margin: 0 10% 0 5%;
+  border: 1px solid #ccc;
+  border-top:0;
+  box-sizing: border-box;
+  max-height: calc(100vh - 200px);
+  overflow: auto;
+  position: absolute;
+}
+
+.autocomplete-search-box .search-result li {
+  width: 100%;
+  list-style-type: none;
+  padding: 0;
+  border: 0;
+}
+
+.autocomplete-search-box .search-result li:hover {
+  background: #3498db;
+  color: white;
+}
+
+#extra-terms {
+  width: 80%;
+  margin: 0 10% 0 5%;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1.5px solid darkgray;
+}
+
+#excluded-codes {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1.5px solid darkgray;
+}
+
+#message {
+  border: 4.5px solid #2c00ff;
+  margin-top: 5px;
+  padding: 5px;
+}
+
+.potential-word {
+  justify-content: space-between;
+  display: flex;
+  align-items: center;
+}
+.potential-word button {
+  background-color: #bd9700;
+}
+.potential-word button.included {
+  background-color: #cf1100;
+}
+.potential-word button.info-button {
+  background-color: #5e50ff;
+}
+
+.heading {
+  margin: 5px 0;
+  font-weight: bold;
+}

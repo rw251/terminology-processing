@@ -1,0 +1,18 @@
+- List of exclusion terms
+- Add Read and CTV3 searching as well
+  e.g. to find Dozine from Chlorpromazine
+- EMIS?
+- including hyphenated terms
+  - Examples
+    - Chlordiazepoxide leads to suggestion of Limbitrol-5 - but here I think we should just match limbitrol
+    - Aspirin lead to suggestion of nu-seals - would want to search for nu and seals
+- avoid extra words like \*zileze (if search for Zopiclone) - strip the "\*" and deduplicate
+- the extra terms jump around if you include/exclude - also the width of the button changes
+- height of scrollable area needs updating better
+- more exclusions for read/ctv3
+  - poisoning$
+  - poisoning of undetermined intent$
+  - allergy$
+  - overdose$
+  - overdose of undetermined intent$
+  - OR just do it based on first letter for Read code, and ?? for ctv3

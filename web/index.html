@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5" />
+    <meta name="msapplication-TileColor" content="#da532c" />
+    <meta name="theme-color" content="#ffffff" />
+
+    <title>SNOMED browser</title>
+
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="banner">
+      <span class="title">SNOMED browser</span>
+    </div>
+    <div id="version-wrapper" style="text-align: center; font-size: 18px"></div>
+    <div id="loader">
+      <div class="lds-facebook">
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+    </div>
+    <div class="tab">
+      <button class="tablinks" onclick="openTab('Refsets')">Refsets</button>
+      <button class="tablinks" onclick="openTab('Codes')">Codes</button>
+    </div>
+    <div class="wrapper" style="display: none">
+      <div id="tags" style="padding-left: 5%">
+        <div class="heading">Main search term</div>
+        <div class="autocomplete-search-box">
+          <input
+            id="input-word"
+            class="text-input search-box"
+            type="text"
+            disabled="disabled"
+            placeholder="Loading SNOMED dictionary..."
+          />
+          <ul class="search-result"></ul>
+        </div>
+        <div class="heading">Possible extra terms</div>
+        <div id="extra-terms"></div>
+        <div id="message"></div>
+        <div class="heading">Excluded codes</div>
+        <div id="excluded-codes"></div>
+      </div>
+      <div id="results" class="tab-content">
+        <div
+          id="term-tab"
+          class="tab"
+          style="display: flex; justify-content: space-between"
+        >
+          <div>
+            <button
+              class="tablinks active"
+              onclick="showTerminology('SNOMED', this)"
+            >
+              SNOMED
+            </button>
+            <button class="tablinks" onclick="showTerminology('CTV3', this)">
+              CTV3
+            </button>
+            <button class="tablinks" onclick="showTerminology('READV2', this)">
+              Read v2
+            </button>
+          </div>
+          <button id="copy-all" style="width: 125px">Copy all</button>
+        </div>
+        <div class="scrollable scrollable-defs">
+          <table id="defs-table" class="hide-inactive">
+            <thead>
+              <tr>
+                <td>Code</td>
+                <td>Description</td>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="/script.js" defer></script>
+  </body>
+</html>

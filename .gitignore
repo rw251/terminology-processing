@@ -5,5 +5,7 @@ web/BNF/
 web/CTV3/
 web/Readv2/
 web/SNOMED/
+web/NHS-DRUG-REFSET/
+web/NHS-PCD-REFSET/
 web/worker*.js
 !web/worker*template.js
