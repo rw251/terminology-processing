@@ -16,8 +16,13 @@ const $termTab = document.getElementById('term-tab');
 const $searchResult = document.querySelector(
   '.autocomplete-search-box .search-result'
 );
+const loader = {
+  snomed: document.getElementById('snomed-loader'),
+  ctv3: document.getElementById('ctv3-loader'),
+  readv2: document.getElementById('readv2-loader'),
+};
 
-const workerUrl = '/worker.js?v=1.1.15';
+const workerUrl = '/worker.js?v=1.1.17';
 const worker = {
   ctv3: new Worker(workerUrl, { name: 'ctv3' }),
   readv2: new Worker(workerUrl, { name: 'readv2' }),
@@ -31,28 +36,37 @@ function send(terminology, action, params = {}) {
 function onWorkerMessage(e) {
   const { msg, terminology } = e.data;
   switch (msg) {
+    case 'autocomplete':
+      const { words } = e.data;
+      $searchResult.innerHTML = words
+        .slice(0, 20)
+        .map((x) => `<li>${x}</li>`)
+        .join('');
+      break;
     case 'searchResult':
       processSearchResults(e.data);
-      // var { message, concepts, possibleExtraWords, excludedConcepts } = e.data;
-      // console.log(
-      //   terminology,
-      //   message,
-      //   concepts,
-      //   possibleExtraWords,
-      //   excludedConcepts
-      // );
       break;
     case 'loading':
       const { number, total } = e.data;
-      $wordInput.style.backgroundImage = `linear-gradient(to right, #00ffcc 0%, #00ffcc ${
+      loader[terminology].querySelector(
+        '.terminology-loader'
+      ).style.backgroundImage = `linear-gradient(to right, #ffda12 0%, #ffda12 ${
         (100 * number) / total
       }%, #fff ${(100 * number) / total}%)`;
       break;
     case 'loaded':
       worker[terminology].isDone = true;
-      const div = document.createElement('div');
-      div.innerText = `Loaded ${terminology} files.`;
-      $loader.appendChild(div);
+      loader[terminology].querySelector('.lds-facebook').style.visibility =
+        'hidden';
+      const termLoader = loader[terminology].querySelector(
+        '.terminology-loader'
+      );
+      termLoader.innerText = `${terminology.toUpperCase()} loaded`;
+      termLoader.style.backgroundImage = 'none';
+
+      termLoader.style.backgroundColor = 'green';
+      termLoader.style.color = 'white';
+      termLoader.style.fontWeight = 'bold';
 
       if (worker.ctv3.isDone && worker.readv2.isDone && worker.snomed.isDone) {
         $loader.style.display = 'none';
@@ -181,7 +195,7 @@ function displayResults() {
     ).length;
 
     const items = Object.entries(data[selectedTerminology].concepts);
-    $message.innerText = data[selectedTerminology].message;
+    $message.innerText = data[selectedTerminology].message || `No matches`;
     $descendantCodes.innerHTML = items
       .map(([code, definition]) => {
         return `<tr><td>${code}</td><td>${definition}</td></tr>`;
@@ -227,12 +241,73 @@ function search(mainWord = $wordInput.value.trim().toLowerCase()) {
   send('readv2', 'search', { words, id: latestId });
 }
 
-$wordInput.addEventListener('input', () => {
+$wordInput.addEventListener('input', (e) => {
   const word = $wordInput.value.trim().toLowerCase();
   if (word.length > 1) {
+    send('snomed', 'autocomplete', { stub: word });
     search(word);
   } else {
     $searchResult.innerHTML = '';
+  }
+});
+
+$wordInput.addEventListener('keydown', (event) => {
+  const callback = {
+    Enter: () => {
+      const currentlyHighlighted = $searchResult.querySelector('.highlighted');
+      if (!currentlyHighlighted) {
+        // do nothing
+      } else {
+        const word = currentlyHighlighted.innerText;
+        if (word.length > 1) {
+          $wordInput.value = word;
+          search(word);
+          $searchResult.innerHTML = '';
+        }
+      }
+    },
+    ArrowUp: () => {
+      event.preventDefault();
+      const currentlyHighlighted = $searchResult.querySelector('.highlighted');
+      if (!currentlyHighlighted) {
+        if ($searchResult.lastChild)
+          $searchResult.lastChild.classList.add('highlighted');
+      } else {
+        const children = $searchResult.children;
+        const index = [...children].indexOf(currentlyHighlighted);
+        const nextIndex = (index - 1 + children.length) % children.length;
+        children[nextIndex].classList.add('highlighted');
+        currentlyHighlighted.classList.remove('highlighted');
+      }
+    },
+    ArrowDown: () => {
+      event.preventDefault();
+      const currentlyHighlighted = $searchResult.querySelector('.highlighted');
+      if (!currentlyHighlighted) {
+        if ($searchResult.firstChild)
+          $searchResult.firstChild.classList.add('highlighted');
+      } else {
+        const children = $searchResult.children;
+        const index = [...children].indexOf(currentlyHighlighted);
+        const nextIndex = (index + 1) % children.length;
+        children[nextIndex].classList.add('highlighted');
+        currentlyHighlighted.classList.remove('highlighted');
+      }
+    },
+  }[event.key];
+  callback?.();
+});
+
+$searchResult.addEventListener('click', (e) => {
+  const node = e.target;
+  if (node && node.tagName.toLowerCase() === 'li') {
+    const word = node.innerText;
+    if (word.length > 1) {
+      $wordInput.value = word;
+      search(word);
+      $searchResult.innerHTML = '';
+    }
+    e.stopPropagation();
   }
 });
 

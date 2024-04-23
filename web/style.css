@@ -150,6 +150,14 @@ li * {
   color: black;
 }
 
+.terminology-loader {
+  width: 50vw;
+  height: 40px;
+  line-height: 40px;
+  border: 1px solid #cccccc;
+  padding-left: 10px;
+}
+
 /*TABLE*/
 table{
   border-collapse: collapse;
@@ -349,7 +357,8 @@ button:disabled, button[disabled] {
   border: 0;
 }
 
-.autocomplete-search-box .search-result li:hover {
+.autocomplete-search-box .search-result li:hover,
+.autocomplete-search-box .search-result li.highlighted{
   background: #3498db;
   color: white;
 }

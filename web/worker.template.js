@@ -8,10 +8,14 @@ function log(msg) {
 
 onmessage = (e) => {
   const { action, params } = e.data;
-  const { version, words, id } = params;
+  const { version, words, id, stub } = params;
   switch (action) {
     case 'search':
       search(words, id);
+      break;
+    case 'autocomplete':
+      const potentialWords = findWords(stub);
+      postMessage({ msg: 'autocomplete', stub, words: potentialWords });
       break;
     default:
       log(`Incorrect action received by worker: ${action}`);
