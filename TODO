@@ -16,3 +16,4 @@
   - overdose$
   - overdose of undetermined intent$
   - OR just do it based on first letter for Read code, and ?? for ctv3
+- consider service worker to ensure big files are cached

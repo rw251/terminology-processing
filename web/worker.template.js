@@ -82,7 +82,9 @@ function search(words, id) {
       const newConcepts = {};
       // For each code matching the word...
       for (let j = 0; j < o.words[word].length; j++) {
-        const conceptId = o.words[word][j];
+        const tempConceptId = o.words[word][j];
+        // Sometimes we compress the snomed ids and need to retrieve them via a lookup
+        const conceptId = o.lookup ? o.lookup[tempConceptId] : tempConceptId;
         // get the definition (is either a string, or an array of multiple defs if ctv/read)
         const definition = o.defs[conceptId];
         // Go for last in array if multiple as that is the location of the longest def;
@@ -222,12 +224,14 @@ function findDrugCodes(code) {
 
 let retrieved = 0;
 async function loadObject(name, r2Path, filename) {
-  console.time(name);
+  console.time(`FETCH:${name}`);
   log(`Starting to fetch ${name}`);
-  o[name] = await fetch(
+  const htmlStream = await fetch(
     `{URL}/${r2Path.replace(/\/\//g, '/')}/${filename}`
-  ).then((x) => x.json());
-
+  );
+  console.timeEnd(`FETCH:${name}`);
+  console.time(`.json():${name}`);
+  o[name] = await htmlStream.json();
   if (name === 'rels' && terminology === 'ctv3') {
     findDrugCodes('x00xm');
     findDrugCodes('x025Q');
@@ -239,7 +243,7 @@ async function loadObject(name, r2Path, filename) {
     number: retrieved,
     total: objectsToLoad.length,
   });
-  console.timeEnd(name);
+  console.timeEnd(`.json():${name}`);
   if (retrieved === objectsToLoad.length) {
     postMessage({ msg: 'loaded', terminology });
   }
@@ -262,11 +266,12 @@ const filenames = {
     defs: 'defs-single.json',
     rels: 'relationships.json',
     trie: 'trie.json',
-    words: 'words.json',
+    words: 'words-hash.json',
+    lookup: 'words-lookup.json',
   },
 };
 
-const objectsToLoad = Object.entries(filenames.snomed).map(([name]) => {
+const objectsToLoad = Object.entries(filenames[terminology]).map(([name]) => {
   return { name, filename: filenames[terminology][name] };
 });
 

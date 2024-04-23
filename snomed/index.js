@@ -28,6 +28,7 @@ import {
   recordKey,
   heading,
   log,
+  assignAltIds,
 } from '../lib/utils.js';
 
 const __dirname = getDirName(import.meta.url);
@@ -63,9 +64,8 @@ function getFileNames({ dirName, drugDirName }) {
   );
 
   const trieFile = path.join(processedFilesDir, 'trie.json');
-  const wordsFile = path.join(processedFilesDir, 'words.json');
-  const wordsFileAtoM = path.join(processedFilesDir, 'words-a-to-m.json');
-  const wordsFileNtoZ = path.join(processedFilesDir, 'words-n-to-z.json');
+  const wordsFile = path.join(processedFilesDir, 'words-hash.json');
+  const lookupFile = path.join(processedFilesDir, 'words-lookup.json');
 
   return {
     rawFilesDir,
@@ -100,10 +100,10 @@ function getFileNames({ dirName, drugDirName }) {
     ),
     trieFile,
     wordsFile,
-    wordsFileAtoM,
-    wordsFileNtoZ,
+    lookupFile,
     latestTrieFile: path.join(PROCESSED_DIR, 'latest', 'trie.json'),
-    latestWordsFile: path.join(PROCESSED_DIR, 'latest', 'words.json'),
+    latestWordsFile: path.join(PROCESSED_DIR, 'latest', 'words-hash.json'),
+    latestLookupFile: path.join(PROCESSED_DIR, 'latest', 'lookup.json'),
   };
 }
 
@@ -388,24 +388,36 @@ async function loadDataIntoMemory({ dirName, drugDirName }) {
 }
 
 function compress({ dirName, drugDirName }) {
-  const { singleDefinitionFile, relationsFile, trieFile, wordsFile } =
-    getFileNames({
-      dirName,
-      drugDirName,
-    });
+  const {
+    singleDefinitionFile,
+    relationsFile,
+    trieFile,
+    wordsFile,
+    lookupFile,
+  } = getFileNames({
+    dirName,
+    drugDirName,
+  });
   brotliCompress(singleDefinitionFile);
   brotliCompress(relationsFile);
   brotliCompress(trieFile);
   brotliCompress(wordsFile);
+  brotliCompress(lookupFile);
   return { dirName, drugDirName };
 }
 
 async function upload({ dirName, drugDirName }) {
-  const { singleDefinitionFile, relationsFile, trieFile, wordsFile, version } =
-    getFileNames({
-      dirName,
-      drugDirName,
-    });
+  const {
+    singleDefinitionFile,
+    relationsFile,
+    trieFile,
+    wordsFile,
+    version,
+    lookupFile,
+  } = getFileNames({
+    dirName,
+    drugDirName,
+  });
   const r2Path = path.join('SNOMED', version);
   await uploadToR2(
     singleDefinitionFile,
@@ -417,6 +429,7 @@ async function upload({ dirName, drugDirName }) {
   );
   await uploadToR2(trieFile, path.join(r2Path, path.basename(trieFile)));
   await uploadToR2(wordsFile, path.join(r2Path, path.basename(wordsFile)));
+  await uploadToR2(lookupFile, path.join(r2Path, path.basename(lookupFile)));
   recordKey('snomed', { name: dirName, r2Path });
   return { dirName, drugDirName };
 }
@@ -437,6 +450,8 @@ function copyToLatest({ dirName, drugDirName }) {
     latestTrieFile,
     wordsFile,
     latestWordsFile,
+    lookupFile,
+    latestLookupFile,
   } = getFileNames({ dirName, drugDirName });
 
   log('Copying defs.json to latest directory...');
@@ -453,8 +468,10 @@ function copyToLatest({ dirName, drugDirName }) {
   copyFileSync(readableRelationsFile, ensureDir(latestReadableRelationsFile));
   log('Copying trie.json to latest directory...');
   copyFileSync(trieFile, ensureDir(latestTrieFile));
-  log('Copying words.json to latest directory...');
+  log('Copying words-hash.json to latest directory...');
   copyFileSync(wordsFile, ensureDir(latestWordsFile));
+  log('Copying lookup.json to latest directory...');
+  copyFileSync(lookupFile, ensureDir(latestLookupFile));
   log('All files copied.');
 }
 
@@ -487,9 +504,11 @@ function createWordDictionary({ dirName, drugDirName }) {
   });
 
   if (existsSync(wordsFile)) {
-    log('words.json already exists so no need to recreate.');
+    log('words-hash.json already exists so no need to recreate.');
     return { dirName, drugDirName };
   }
+
+  const lookup = assignAltIds(definitions);
 
   const definitionsObject = {};
   Object.entries(definitions).forEach(([snomedCode, defObj]) => {
@@ -497,7 +516,7 @@ function createWordDictionary({ dirName, drugDirName }) {
       .filter((x) => x.a)
       .map((x) => x.t);
   });
-  processWords(definitionsObject, processedFilesDir);
+  processWords(definitionsObject, processedFilesDir, lookup);
   return { dirName, drugDirName };
 }
 
