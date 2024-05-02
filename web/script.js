@@ -21,8 +21,12 @@ const loader = {
   ctv3: document.getElementById('ctv3-loader'),
   readv2: document.getElementById('readv2-loader'),
 };
+const version = '1.1.19';
+document.querySelector(
+  '.title'
+).innerText = `Medication code set creator v${version}`;
 
-const workerUrl = '/worker.js?v=1.1.18';
+const workerUrl = `/worker.js?v=${version}`;
 const worker = {
   ctv3: new Worker(workerUrl, { name: 'ctv3' }),
   readv2: new Worker(workerUrl, { name: 'readv2' }),
