@@ -56,6 +56,7 @@ const exclusionTerms = [
   /\(procedure\)/i,
   /\(substance\)/i,
   /\(observable entity\)/i,
+  /\(navigational concept\)/i,
   /\(qualifier value\)/i,
   /\(situation\)/i,
   /\(regime\/therapy\)/i,

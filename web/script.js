@@ -22,7 +22,7 @@ const loader = {
   readv2: document.getElementById('readv2-loader'),
 };
 
-const workerUrl = '/worker.js?v=1.1.17';
+const workerUrl = '/worker.js?v=1.1.18';
 const worker = {
   ctv3: new Worker(workerUrl, { name: 'ctv3' }),
   readv2: new Worker(workerUrl, { name: 'readv2' }),
