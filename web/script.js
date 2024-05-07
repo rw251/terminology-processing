@@ -21,7 +21,7 @@ const loader = {
   ctv3: document.getElementById('ctv3-loader'),
   readv2: document.getElementById('readv2-loader'),
 };
-const version = '1.1.19';
+const version = '1.1.20';
 document.querySelector(
   '.title'
 ).innerText = `Medication code set creator v${version}`;
@@ -31,6 +31,11 @@ const worker = {
   ctv3: new Worker(workerUrl, { name: 'ctv3' }),
   readv2: new Worker(workerUrl, { name: 'readv2' }),
   snomed: new Worker(workerUrl, { name: 'snomed' }),
+};
+
+const cachedResponses = {
+  rxNorm: {},
+  dbPedia: {},
 };
 
 function send(terminology, action, params = {}) {
@@ -107,11 +112,55 @@ $extraTerms.addEventListener('click', async (e) => {
   if (e.target.dataset && e.target.dataset.word) {
     //Is it the more info button ?
     if (e.target.classList.contains('info-button')) {
-      const resp = await fetch(
-        `https://rxnav.nlm.nih.gov/REST/approximateTerm.json?term=${e.target.dataset.word}`
-      ).then((x) => x.json());
-      if (resp && resp.approximateGroup && resp.approximateGroup.candidate) {
-        const possibleMatches = resp.approximateGroup.candidate
+      const term = e.target.dataset.word;
+      const mainWord = $wordInput.value.trim().toLowerCase();
+      const mainWordCapped =
+        mainWord[0].toUpperCase() + mainWord.slice(1).toLowerCase();
+
+      const promises = [];
+
+      promises.push(
+        cachedResponses.rxNorm[term] ||
+          fetch(
+            `https://rxnav.nlm.nih.gov/REST/approximateTerm.json?term=${term}`
+          ).then((x) => x.json())
+      );
+
+      promises.push(
+        cachedResponses.dbPedia[mainWord] ||
+          fetch(
+            `https://dbpedia.org/sparql?default-graph-uri=http://dbpedia.org&query=select%20%3Fz%20where%20%7B%20%3Fz%20dbo%3AwikiPageRedirects%20%20%3Chttp%3A%2F%2Fdbpedia.org%2Fresource%2F${mainWordCapped}%3E%20%7D&format=application/json`
+          ).then((x) => x.json())
+      );
+
+      const [rxNormResponse, dbPediaResponse] = await Promise.all(promises);
+
+      if (rxNormResponse) cachedResponses.rxNorm[term] = rxNormResponse;
+      if (dbPediaResponse) cachedResponses.dbPedia[mainWord] = dbPediaResponse;
+
+      const msg = [];
+
+      if (
+        dbPediaResponse &&
+        dbPediaResponse.results &&
+        dbPediaResponse.results.bindings &&
+        dbPediaResponse.results.bindings[0] &&
+        dbPediaResponse.results.bindings[0].z &&
+        dbPediaResponse.results.bindings[0].z.value &&
+        dbPediaResponse.results.bindings
+          .map((x) =>
+            x.z.value.split('/').reverse()[0].split('_').join(' ').toLowerCase()
+          )
+          .indexOf(term.toLowerCase()) > -1
+      ) {
+        msg.push(`${term} redirects to ${mainWord} on wikipedia`);
+      }
+      if (
+        rxNormResponse &&
+        rxNormResponse.approximateGroup &&
+        rxNormResponse.approximateGroup.candidate
+      ) {
+        const possibleMatches = rxNormResponse.approximateGroup.candidate
           .map((x) => x.name || false)
           .filter(
             (x) =>
@@ -120,15 +169,14 @@ $extraTerms.addEventListener('click', async (e) => {
                 -1
           );
         if (possibleMatches.length > 0) {
-          const el = document.createElement('div');
-          el.innerText = `RXNorm contains: ${possibleMatches[0]}`;
-          e.target.parentElement.parentElement.after(el);
-        } else {
-          window.open(
-            `https://www.google.com/search?q=${e.target.dataset.word}`,
-            '_blank'
-          );
+          msg.push(`RXNorm contains: ${possibleMatches[0]}`);
         }
+      }
+
+      if (msg.length > 0) {
+        const el = document.createElement('div');
+        el.innerText = msg.join(' / ');
+        e.target.parentElement.parentElement.after(el);
       } else {
         window.open(
           `https://www.google.com/search?q=${e.target.dataset.word}`,
