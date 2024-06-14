@@ -239,7 +239,7 @@ let retrieved = 0;
 async function loadObject(name, r2Path, filename) {
   console.time(`FETCH:${name}`);
   log(`Starting to fetch ${name}`);
-  const url = `{URL}/${r2Path.replace(/\/\//g, '/')}/${filename}`;
+  const url = `{URL}/${r2Path.replace(/\/\//g, '/')}/${filename}?v=1`; // cache busting but only if error in stored file
   const htmlStream = await fetch(url);
   console.timeEnd(`FETCH:${name}`);
   console.time(`.json():${name}`);
