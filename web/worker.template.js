@@ -239,12 +239,14 @@ let retrieved = 0;
 async function loadObject(name, r2Path, filename) {
   console.time(`FETCH:${name}`);
   log(`Starting to fetch ${name}`);
-  const htmlStream = await fetch(
-    `{URL}/${r2Path.replace(/\/\//g, '/')}/${filename}`
-  );
+  const url = `{URL}/${r2Path.replace(/\/\//g, '/')}/${filename}`;
+  const htmlStream = await fetch(url);
   console.timeEnd(`FETCH:${name}`);
   console.time(`.json():${name}`);
-  o[name] = await htmlStream.json();
+  o[name] = await htmlStream.json().catch((err) => {
+    //json parsing error
+    log(`Error parsing: ${url}`);
+  });
   if (name === 'rels' && terminology === 'ctv3') {
     findDrugCodes('x00xm');
     findDrugCodes('x025Q');

@@ -21,7 +21,7 @@ const loader = {
   ctv3: document.getElementById('ctv3-loader'),
   readv2: document.getElementById('readv2-loader'),
 };
-const version = '1.1.21';
+const version = '1.1.22';
 document.querySelector(
   '.title'
 ).innerText = `Medication code set creator v${version}`;
