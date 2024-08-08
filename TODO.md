@@ -1,5 +1,6 @@
 # TODO
 
+- relationships.json is always truncated - only fixed when re-run - why?
 - EMIS?
 - including hyphenated terms
   - Examples
