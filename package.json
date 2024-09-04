@@ -26,7 +26,7 @@
     "prestart": "npm run copy && npm run replace:dev",
     "build": "npm run copy && npm run replace:prod",
     "start": "http-server ./web --port 8954 --open --brotli",
-    "process": "node --max-old-space-size=4096 index.js"
+    "process": "node --max-old-space-size=8192 index.js"
   },
   "type": "module"
 }

@@ -378,7 +378,7 @@ async function loadDataIntoMemory({ dirName, drugDirName }) {
 
     const stream = createWriteStream(ensureDir(relationsFile));
     jsonStream.pipe(stream);
-    jsonStream.on('end', () => {
+    stream.on('close', () => {
       log('relationships.json written');
       return resolve();
     });
