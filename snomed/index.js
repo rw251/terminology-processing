@@ -430,7 +430,7 @@ async function upload({ dirName, drugDirName }) {
   await uploadToR2(trieFile, path.join(r2Path, path.basename(trieFile)));
   await uploadToR2(wordsFile, path.join(r2Path, path.basename(wordsFile)));
   await uploadToR2(lookupFile, path.join(r2Path, path.basename(lookupFile)));
-  recordKey('snomed', { name: dirName, r2Path });
+  recordKey('snomed', { name: `${dirName}_${drugDirName}`, r2Path });
   return { dirName, drugDirName };
 }
 
