@@ -1,6 +1,5 @@
 # TODO
 
-- relationships.json is always truncated - only fixed when re-run - why?
 - EMIS?
 - including hyphenated terms
   - Examples
@@ -47,3 +46,4 @@
   e.g. to find Dozine from Chlorpromazine
 - avoid extra words like \*zileze (if search for Zopiclone) - strip the "\*" and deduplicate
 - If the RXNorm thing fails, then can lookup with dbpedia like this
+- relationships.json is always truncated - only fixed when re-run - why?
