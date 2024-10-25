@@ -1,5 +1,6 @@
 # TODO
 
+- make brotli a requirement e.g. from a terminal "brotli" should work
 - EMIS?
 - including hyphenated terms
   - Examples
