@@ -8,8 +8,8 @@
     "r2Path": "BNF\\BNF-Snomed-Mapping-data-20240321"
   },
   "nhs-drug-refset": {
-    "name": "uk_sct2dr_40.0.0_20250409000001Z",
-    "r2Path": "NHS-DRUG-REFSET/uk_sct2dr_40.0.0_20250409000001Z"
+    "name": "uk_sct2dr_40.1.0_20250507000001Z",
+    "r2Path": "NHS-DRUG-REFSET/uk_sct2dr_40.1.0_20250507000001Z"
   },
   "nhs-pcd-refset": {
     "name": "uk_sct2pc_54.0.0_20241205000000Z",
@@ -24,7 +24,7 @@
     "r2Path": "CTV3\\20180401"
   },
   "snomed": {
-    "name": "uk_sct2cl_40.0.0_20250409000001Z_uk_sct2dr_40.0.0_20250409000001Z",
-    "r2Path": "SNOMED/40.0.0_20250409"
+    "name": "uk_sct2cl_40.0.0_20250409000001Z_uk_sct2dr_40.1.0_20250507000001Z",
+    "r2Path": "SNOMED/40.1.0_20250507"
   }
 }
