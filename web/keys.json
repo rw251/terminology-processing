@@ -12,8 +12,8 @@
     "r2Path": "NHS-DRUG-REFSET/uk_sct2dr_42.2.0_20260603000001Z"
   },
   "nhs-pcd-refset": {
-    "name": "uk_sct2pc_61.0.0_20260424000000Z",
-    "r2Path": "NHS-PCD-REFSET/uk_sct2pc_61.0.0_20260424000000Z"
+    "name": "uk_sct2pc_62.0.0_20260630000000Z",
+    "r2Path": "NHS-PCD-REFSET/uk_sct2pc_62.0.0_20260630000000Z"
   },
   "readv2": {
     "name": "Readv2-20160401",
